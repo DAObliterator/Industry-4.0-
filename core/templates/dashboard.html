@@ -7,7 +7,7 @@
     <!-- Use the full Tailwind Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Use the full Chart.js CDN -->
-    <script src="https://jsdelivr.net"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans">
 
@@ -124,17 +124,45 @@
             </table>
         </div>
 
-        <script>
-            // 1. Handle Form Submission (AJAX)
+       <script>
+            // 1. Handle Form Submission (AJAX - NO RELOAD)
             document.getElementById('predictForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
-                const response = await fetch('/', {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
-                });
-                if (response.ok) { window.location.reload(); }
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                try {
+                    const response = await fetch('/', {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-CSRFToken': csrfToken }
+                    });
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const newDoc = parser.parseFromString(html, 'text/html');
+                    
+                    // Update status cards
+                    const newStatusCards = newDoc.querySelectorAll('.grid.grid-cols-1.md\\:grid-cols-3')[0];
+                    if (newStatusCards) {
+                        document.querySelectorAll('.grid.grid-cols-1.md\\:grid-cols-3')[0].innerHTML = newStatusCards.innerHTML;
+                    }
+                    
+                    // Update table
+                    const newTable = newDoc.querySelector('table');
+                    if (newTable) {
+                        document.querySelector('table').innerHTML = newTable.innerHTML;
+                    }
+                    
+                    // Reset form
+                    e.target.reset();
+                    
+                } catch (err) {
+                    console.error('Prediction error:', err);
+                    alert('Failed to predict: ' + err.message);
+                }
             });
 
            // Wait for the library to be ready
@@ -142,7 +170,6 @@
                 if (typeof Chart !== 'undefined') {
                     const ctx = document.getElementById('sensorChart').getContext('2d');
                     
-                    // Your existing data variables
                     const labels = [{% for r in readings reversed %}"{{ r.timestamp|date:'H:i'|escapejs }}",{% endfor %}];
                     const airTempData = [{% for r in readings reversed %}{{ r.air_temperature|default:0 }},{% endfor %}];
                     const speedData = [{% for r in readings reversed %}{{ r.rotational_speed|default:0 }},{% endfor %}];
@@ -176,10 +203,9 @@
                         }
                     });
                 } else {
-                    console.error("Chart.js failed to load. Check your CDN link in the head.");
+                    console.error("Chart.js failed to load");
                 }
             });
-
         </script>
 
 

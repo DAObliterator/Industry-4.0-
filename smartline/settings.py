@@ -1,7 +1,10 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
-
+# At the end of settings.py
+# Keep Supabase connection warm
+import threading
+from django.db import connection
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -74,3 +77,15 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 ML_MODEL_PATH = BASE_DIR / 'machine_model.pkl'
+
+def warm_db():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        print("✓ Database warmed up")
+    except Exception as e:
+        print(f"DB warmup failed: {e}")
+
+# Start warmup in background thread
+warmup_thread = threading.Thread(target=warm_db, daemon=True)
+warmup_thread.start()
