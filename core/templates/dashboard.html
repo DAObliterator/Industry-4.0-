@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartLine | Industry 4.0</title>
-    <!-- Use the full Tailwind Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Use the full Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans">
@@ -14,20 +12,25 @@
     <!-- Header -->
     <nav class="border-b border-gray-800 p-4 bg-gray-900 sticky top-0 z-10">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold tracking-tighter text-blue-500">SMART<span class="text-white">LINE</span></h1>
-            <div class="text-sm text-gray-400">Predictive Maintenance System v1.0</div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-tighter text-blue-500">SMART<span class="text-white">LINE</span></h1>
+                <p class="text-xs text-gray-500">Predictive Maintenance with Time-Series Analysis</p>
+            </div>
+            <div class="text-right">
+                <div class="text-sm text-gray-400">Machine Status Dashboard</div>
+                <div class="text-xs text-gray-500">v2.0 (Time-Series Features)</div>
+            </div>
         </div>
     </nav>
 
     <main class="container mx-auto p-6">
 
-
         <!-- Manual Data Entry Form -->
         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-8">
-            <h3 class="text-lg font-semibold mb-4 text-blue-400">Manual Sensor Input (Predictive Test)</h3>
+            <h3 class="text-lg font-semibold mb-4 text-blue-400">🔮 Manual Sensor Input (Predictive Test)</h3>
             
-            <form  id="predictForm" method="POST" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
-                {% csrf_token %} <!-- Django's security token (Required for POST) -->
+            <form id="predictForm" method="POST" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+                {% csrf_token %}
                 
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Air Temp (K)</label>
@@ -54,77 +57,144 @@
                     <input type="number" name="wear" required class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-blue-500 outline-none">
                 </div>
 
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-200">
-                    PREDICT
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-200 w-full">
+                    🚀 PREDICT
                 </button>
             </form>
         </div>
 
         <!-- Status Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
                 <p class="text-gray-400 text-sm uppercase font-semibold">Current Status</p>
-                <!-- UCI prediction is 0 or 1 -->
                 <h2 class="text-3xl font-bold mt-2 {% if readings.0.prediction == 1 %}text-red-500{% else %}text-green-500{% endif %}">
-                    {% if readings.0.prediction == 1 %}FAILURE{% elif readings.0 %}HEALTHY{% else %}No Data{% endif %}
+                    {% if readings.0.prediction == 1 %}🚨 FAILURE{% elif readings.0 %}✅ HEALTHY{% else %}—{% endif %}
                 </h2>
             </div>
             <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <p class="text-gray-400 text-sm uppercase font-semibold">Air Temp</p>
-                <h2 class="text-3xl font-bold mt-2 text-white">{{ readings.0.air_temperature|floatformat:1 }} K</h2>
+                <p class="text-gray-400 text-sm uppercase font-semibold">Confidence</p>
+                <h2 class="text-3xl font-bold mt-2 text-white">{{ readings.0.confidence|floatformat:1 }}%</h2>
+                <p class="text-xs text-gray-500 mt-1">Model certainty</p>
             </div>
             <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <p class="text-gray-400 text-sm uppercase font-semibold">Torque</p>
-                <h2 class="text-3xl font-bold mt-2 text-white">{{ readings.0.torque|floatformat:1 }} Nm</h2>
+                <p class="text-gray-400 text-sm uppercase font-semibold">Wear Trend</p>
+                <h2 class="text-3xl font-bold mt-2 {% if readings.0.wear_trend_1 > 0 %}text-red-400{% else %}text-green-400{% endif %}">
+                    {{ readings.0.wear_trend_1|floatformat:2 }} min
+                </h2>
+                <p class="text-xs text-gray-500 mt-1">Rate of change</p>
+            </div>
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <p class="text-gray-400 text-sm uppercase font-semibold">Temp Volatility</p>
+                <h2 class="text-3xl font-bold mt-2 text-white">{{ readings.0.air_temp_rolling_std_5|floatformat:2 }} K</h2>
+                <p class="text-xs text-gray-500 mt-1">Std dev (5-reading)</p>
             </div>
         </div>
+
+        <!-- Time-Series Metrics Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Trends Card -->
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-semibold mb-4 text-blue-400">📈 Trend Analysis</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Air Temp Trend</span>
+                        <span class="font-mono {% if readings.0.air_temp_trend_1 > 0 %}text-red-400{% else %}text-green-400{% endif %}">{{ readings.0.air_temp_trend_1|floatformat:2 }} K/reading</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Process Temp Trend</span>
+                        <span class="font-mono {% if readings.0.proc_temp_trend_1 > 0 %}text-red-400{% else %}text-green-400{% endif %}">{{ readings.0.proc_temp_trend_1|floatformat:2 }} K/reading</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Torque Trend</span>
+                        <span class="font-mono {% if readings.0.torque_trend_1 > 0 %}text-orange-400{% else %}text-green-400{% endif %}">{{ readings.0.torque_trend_1|floatformat:2 }} Nm/reading</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Wear Acceleration</span>
+                        <span class="font-mono {% if readings.0.wear_trend_1 > 0.5 %}text-red-400{% else %}text-green-400{% endif %}">{{ readings.0.wear_trend_1|floatformat:2 }} min/reading</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Velocity Card -->
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <h3 class="text-lg font-semibold mb-4 text-blue-400">⚡ Velocity Metrics</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Air Temp Velocity (3-reading)</span>
+                        <span class="font-mono {% if readings.0.air_temp_velocity_3 > 0 %}text-red-400{% else %}text-green-400{% endif %}">{{ readings.0.air_temp_velocity_3|floatformat:3 }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Wear Velocity (3-reading)</span>
+                        <span class="font-mono {% if readings.0.wear_velocity_3 > 0 %}text-orange-400{% else %}text-green-400{% endif %}">{{ readings.0.wear_velocity_3|floatformat:3 }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Torque Max (5-reading)</span>
+                        <span class="font-mono text-yellow-400">{{ readings.0.torque_rolling_max_5|floatformat:1 }} Nm</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Speed Min (5-reading)</span>
+                        <span class="font-mono text-cyan-400">{{ readings.0.speed_rolling_min_5|floatformat:0 }} RPM</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Chart Section -->
         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-8">
-            <h3 class="text-lg font-semibold mb-4 text-gray-300">Sensor Trends (Last 20 Readings)</h3>
+            <h3 class="text-lg font-semibold mb-4 text-gray-300">📊 Sensor Trends (Last 20 Readings)</h3>
             <div class="h-64">
                 <canvas id="sensorChart"></canvas>
             </div>
-        </div>         
+        </div>
 
         <!-- History Table -->
         <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-            <table class="w-full text-left">
-                <thead class="bg-gray-700 text-gray-300 text-sm">
+            <div class="p-4 border-b border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-300">📋 Prediction History</h3>
+            </div>
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-700 text-gray-300 sticky top-0">
                     <tr>
-                        <th class="p-4">Timestamp</th>
-                        <th class="p-4">Air Temp (K)</th>
-                        <th class="p-4">Proc Temp (K)</th>
-                        <th class="p-4">Speed (RPM)</th>
-                        <th class="p-4">Torque (Nm)</th>
-                        <th class="p-4">Wear (min)</th>
-                        <th class="p-4">Status</th>
+                        <th class="p-3">Time</th>
+                        <th class="p-3">Air Temp (K)</th>
+                        <th class="p-3">Proc Temp (K)</th>
+                        <th class="p-3">Speed (RPM)</th>
+                        <th class="p-3">Torque (Nm)</th>
+                        <th class="p-3">Wear (min)</th>
+                        <th class="p-3">Temp Trend</th>
+                        <th class="p-3">Wear Velocity</th>
+                        <th class="p-3">Confidence</th>
+                        <th class="p-3">Status</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-700">
                     {% for r in readings %}
                     <tr class="hover:bg-gray-750 transition">
-                        <td class="p-4 text-gray-400 text-sm">{{ r.timestamp|date:"H:i:s" }}</td>
-                        <td class="p-4 font-mono text-blue-400">{{ r.air_temperature|floatformat:1 }}</td>
-                        <td class="p-4 font-mono text-blue-300">{{ r.process_temperature|floatformat:1 }}</td>
-                        <td class="p-4 font-mono text-green-400">{{ r.rotational_speed|floatformat:0 }}</td>
-                        <td class="p-4 font-mono text-yellow-400">{{ r.torque|floatformat:1 }}</td>
-                        <td class="p-4 font-mono text-orange-400">{{ r.tool_wear|floatformat:0 }}</td>
-                        <td class="p-4">
+                        <td class="p-3 text-gray-400 text-xs">{{ r.timestamp|date:"H:i:s" }}</td>
+                        <td class="p-3 font-mono text-blue-400">{{ r.air_temperature|floatformat:1 }}</td>
+                        <td class="p-3 font-mono text-blue-300">{{ r.process_temperature|floatformat:1 }}</td>
+                        <td class="p-3 font-mono text-green-400">{{ r.rotational_speed|floatformat:0 }}</td>
+                        <td class="p-3 font-mono text-yellow-400">{{ r.torque|floatformat:1 }}</td>
+                        <td class="p-3 font-mono text-orange-400">{{ r.tool_wear|floatformat:0 }}</td>
+                        <td class="p-3 font-mono text-xs {% if r.air_temp_trend_1 > 0 %}text-red-400{% else %}text-green-400{% endif %}">{{ r.air_temp_trend_1|floatformat:2 }}</td>
+                        <td class="p-3 font-mono text-xs {% if r.wear_velocity_3 > 0 %}text-red-400{% else %}text-green-400{% endif %}">{{ r.wear_velocity_3|floatformat:3 }}</td>
+                        <td class="p-3 font-mono text-xs text-gray-300">{{ r.confidence|floatformat:1 }}%</td>
+                        <td class="p-3">
                             <span class="px-2 py-1 rounded text-xs font-bold 
                                 {% if r.prediction == 1 %}bg-red-900 text-red-200
                                 {% else %}bg-green-900 text-green-200{% endif %}">
-                                {% if r.prediction == 1 %}FAILURE{% else %}HEALTHY{% endif %}
+                                {% if r.prediction == 1 %}🚨 FAILURE{% else %}✅ HEALTHY{% endif %}
                             </span>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="p-8 text-center text-gray-500">No sensor data logged yet. Run the seed script!</td></tr>
+                    <tr><td colspan="10" class="p-8 text-center text-gray-500">No sensor data logged yet. Run seed_data.py or make a prediction!</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-       <script>
+        <script>
             // 1. Handle Form Submission (AJAX - NO RELOAD)
             document.getElementById('predictForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -145,9 +215,15 @@
                     const newDoc = parser.parseFromString(html, 'text/html');
                     
                     // Update status cards
-                    const newStatusCards = newDoc.querySelectorAll('.grid.grid-cols-1.md\\:grid-cols-3')[0];
-                    if (newStatusCards) {
-                        document.querySelectorAll('.grid.grid-cols-1.md\\:grid-cols-3')[0].innerHTML = newStatusCards.innerHTML;
+                    const newCards = newDoc.querySelectorAll('.grid.grid-cols-1.md\\:grid-cols-4')[0];
+                    if (newCards) {
+                        document.querySelectorAll('.grid.grid-cols-1.md\\:grid-cols-4')[0].innerHTML = newCards.innerHTML;
+                    }
+                    
+                    // Update metrics cards
+                    const newMetrics = newDoc.querySelectorAll('.grid.grid-cols-1.md\\:grid-cols-2')[0];
+                    if (newMetrics) {
+                        document.querySelectorAll('.grid.grid-cols-1.md\\:grid-cols-2')[0].innerHTML = newMetrics.innerHTML;
                     }
                     
                     // Update table
@@ -165,7 +241,7 @@
                 }
             });
 
-           // Wait for the library to be ready
+            // 2. Initialize Chart
             window.addEventListener('load', () => {
                 if (typeof Chart !== 'undefined') {
                     const ctx = document.getElementById('sensorChart').getContext('2d');
@@ -173,6 +249,7 @@
                     const labels = [{% for r in readings reversed %}"{{ r.timestamp|date:'H:i'|escapejs }}",{% endfor %}];
                     const airTempData = [{% for r in readings reversed %}{{ r.air_temperature|default:0 }},{% endfor %}];
                     const speedData = [{% for r in readings reversed %}{{ r.rotational_speed|default:0 }},{% endfor %}];
+                    const wearData = [{% for r in readings reversed %}{{ r.tool_wear|default:0 }},{% endfor %}];
 
                     new Chart(ctx, {
                         type: 'line',
@@ -190,16 +267,38 @@
                                 borderColor: '#10b981',
                                 tension: 0.3,
                                 yAxisID: 'y1',
+                            }, {
+                                label: 'Tool Wear (min)',
+                                data: wearData,
+                                borderColor: '#f59e0b',
+                                tension: 0.3,
+                                yAxisID: 'y1',
                             }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
                             scales: {
-                                y: { type: 'linear', display: true, position: 'left', grid: { color: '#374151' } },
-                                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false } }
+                                y: { 
+                                    type: 'linear', 
+                                    display: true, 
+                                    position: 'left', 
+                                    grid: { color: '#374151' },
+                                    title: { display: true, text: 'Temperature (K)' }
+                                },
+                                y1: { 
+                                    type: 'linear', 
+                                    display: true, 
+                                    position: 'right', 
+                                    grid: { drawOnChartArea: false },
+                                    title: { display: true, text: 'Speed / Wear' }
+                                }
                             },
-                            plugins: { legend: { labels: { color: 'white' } } }
+                            plugins: { 
+                                legend: { labels: { color: 'white' } },
+                                filler: { propagate: true }
+                            }
                         }
                     });
                 } else {
@@ -208,9 +307,7 @@
             });
         </script>
 
-
     </main>
 
-    
 </body>
 </html>
